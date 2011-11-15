@@ -13,7 +13,7 @@ import (
 	"flag"
 )
 
-var irc_channel *string = flag.String("channel", "#raumzeitlabor",
+var irc_channel *string = flag.String("channel", "#i3",
 	"In which channel this bot should be in")
 
 // Helper type: We first unmarshal the JSON into this type to get access to the

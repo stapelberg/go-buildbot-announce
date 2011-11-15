@@ -51,7 +51,7 @@ type BuildFinishedEvent struct {
 }
 
 func (o *BuildFinishedEvent) AsChatLine() string {
-	return fmt.Sprintf("Job [%s] finished for version %s",
+	return fmt.Sprintf("%s finished for %s",
 		o.buildername, o.gitversion)
 }
 

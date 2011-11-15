@@ -46,13 +46,16 @@ type BuildFinishedEvent struct {
 		}
 	}
 
+	// Properties which are saved in StoreKeyValue and assembled to an IRC line
+	// in AsChatLine.
 	buildername string
 	gitversion  string
+	ircsuffix   string
 }
 
 func (o *BuildFinishedEvent) AsChatLine() string {
-	return fmt.Sprintf("%s finished for %s",
-		o.buildername, o.gitversion)
+	return fmt.Sprintf("%s finished for %s%s",
+		o.buildername, o.gitversion, o.ircsuffix)
 }
 
 func (o *BuildFinishedEvent) StoreKeyValue(key, value string) {
@@ -61,6 +64,8 @@ func (o *BuildFinishedEvent) StoreKeyValue(key, value string) {
 		o.buildername = value
 	case "gitversion":
 		o.gitversion = value
+	case "ircsuffix":
+		o.ircsuffix = value
 	}
 }
 

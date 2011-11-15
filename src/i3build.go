@@ -147,7 +147,7 @@ func main() {
 		}
 	}()
 
-	c := irc.New("gobot", "ident", "real name")
+	c := irc.New("i3build", "i3build", "http://build.i3wm.org/")
 
 	c.AddHandler("connected",
 		func(conn *irc.Conn, line *irc.Line) {

@@ -130,7 +130,7 @@ func main() {
 
 	// Handle HTTP requests in a different Goroutine.
 	go func() {
-		if err := http.ListenAndServe(":8080", nil); err != nil {
+		if err := http.ListenAndServe("localhost:8080", nil); err != nil {
 			log.Fatal("ListenAndServer: ", err.String())
 		}
 	}()

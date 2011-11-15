@@ -11,7 +11,6 @@ import (
 	"json"
 	"os"
 	"flag"
-	"time"
 )
 
 var irc_channel *string = flag.String("channel", "#raumzeitlabor",
@@ -107,17 +106,6 @@ func main() {
 	// Channel on which the HTTP handler sends lines to IRC.
 	to_irc := make(chan string)
 	quit := make(chan bool)
-	// Workaround channel to send a PING every 250 seconds to avoid the 300
-	// second default timeout from disconnecting us.
-	ping := make(chan bool)
-
-	go func() {
-		for {
-			// sleep 250 seconds
-			time.Sleep(250 * 1e9)
-			ping <- true
-		}
-	}()
 
 	http.HandleFunc("/push_buildbot",
 		func(w http.ResponseWriter, r *http.Request) {
@@ -181,9 +169,6 @@ func main() {
 			if err := c.Connect("irc.twice-irc.de"); err != nil {
 				log.Printf("Connection error: %s\n", err.String())
 			}
-		case <-ping:
-			log.Println("Sending keepalive ping")
-			c.Raw("PING :keepalive")
 		}
 	}
 	log.Fatalln("Fell out of the main loop?!")

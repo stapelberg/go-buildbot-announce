@@ -135,7 +135,7 @@ func main() {
 		}
 	}()
 
-	c := irc.New("i3build", "i3build", "http://build.i3wm.org/")
+	c := irc.SimpleClient("i3build", "i3build", "http://build.i3wm.org/")
 
 	c.AddHandler("connected",
 		func(conn *irc.Conn, line *irc.Line) {
@@ -154,14 +154,6 @@ func main() {
 	// program main loop
 	for {
 		select {
-		case err, ok := <-c.Err:
-			// If the error channel was closed, we lost the IRC connection.
-			if !ok {
-				break
-			}
-			if err != nil {
-				log.Printf("goirc error: %s", err.String())
-			}
 		case line, _ := <-to_irc:
 			c.Privmsg(*irc_channel, line)
 		case <-quit:

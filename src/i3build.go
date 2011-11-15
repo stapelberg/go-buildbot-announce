@@ -133,7 +133,10 @@ func main() {
 	c := irc.New("gobot", "ident", "real name")
 
 	c.AddHandler("connected",
-		func(conn *irc.Conn, line *irc.Line) { conn.Join(*irc_channel) })
+		func(conn *irc.Conn, line *irc.Line) {
+			log.Printf("Connected, joining channel %s\n", *irc_channel)
+			conn.Join(*irc_channel)
+		})
 
 	c.AddHandler("disconnected",
 		func(conn *irc.Conn, line *irc.Line) { quit <- true })

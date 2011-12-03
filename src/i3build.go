@@ -1,5 +1,5 @@
 // vim:ts=4:sw=4
-// i3build - IRC bot to announce buildbot status
+// i3 - IRC bot to announce buildbot status and commits
 // © 2011 Michael Stapelberg (see also: LICENSE)
 package main
 
@@ -11,6 +11,8 @@ import (
 	"json"
 	"os"
 	"flag"
+	"strings"
+	"io/ioutil"
 )
 
 var irc_channel *string = flag.String("channel", "#i3",
@@ -128,6 +130,19 @@ func main() {
 			}
 		})
 
+	http.HandleFunc("/push_commit",
+		func(w http.ResponseWriter, r *http.Request) {
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				log.Printf("Could not read body: %s\n", err.String())
+				return
+			}
+			lines := strings.Split(string(body), "\n")
+			for _, line := range lines {
+				to_irc <- line
+			}
+		})
+
 	// Handle HTTP requests in a different Goroutine.
 	go func() {
 		if err := http.ListenAndServe("localhost:8080", nil); err != nil {
@@ -135,7 +150,7 @@ func main() {
 		}
 	}()
 
-	c := irc.SimpleClient("i3build", "i3build", "http://build.i3wm.org/")
+	c := irc.SimpleClient("i3", "i3", "http://build.i3wm.org/")
 
 	c.AddHandler("connected",
 		func(conn *irc.Conn, line *irc.Line) {

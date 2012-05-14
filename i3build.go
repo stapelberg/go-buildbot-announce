@@ -12,10 +12,18 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"regexp"
+	"bufio"
+	"time"
 )
+
+var to_irc chan string
 
 var irc_channel *string = flag.String("channel", "#i3",
 	"In which channel this bot should be in")
+
+// This is naive, but hopefully good enough :)
+var url_re *regexp.Regexp = regexp.MustCompile("(http://(?:[^ ]*))")
 
 // Helper type: We first unmarshal the JSON into this type to get access to the
 // "event" string, then we decide which concrete type to unmarshal to.
@@ -101,11 +109,87 @@ func (o *BuildbotEvent) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func getURLTitle(url string) {
+	result := make(chan *http.Response)
+	go func() {
+		resp, err := http.Get(url)
+		if err != nil {
+			result <- nil
+			return
+		}
+		result <- resp
+	}()
+
+	go func() {
+		time.Sleep(10 * time.Second)
+		result <- nil
+	}()
+
+	resp := <-result
+	if resp == nil {
+		return
+	}
+
+	fmt.Printf(`URL "%s", status %d\n`, url, resp.StatusCode)
+
+	// Check for the special case of a , or ) being the last character of the
+	// URL. This happens when the URL is used without leaving a whitespace
+	// between the text, for example in "hey, i followed the userguide
+	// (http://i3wm.org/docs/userguide.html) and it doesn’t work". We can’t
+	// always split on these characters since some pages (like spiegel.de) use
+	// strange characters in their normal URLs.
+	if resp.StatusCode == 404 &&
+		(strings.HasSuffix(url, ",") || strings.HasSuffix(url, ")")) {
+		getURLTitle(strings.TrimRight(url, ",)"))
+		return
+	}
+
+	if resp.StatusCode != 200 {
+		return
+	}
+
+	reader := bufio.NewReaderSize(resp.Body, 1 * 1024 * 1024)
+	for {
+		line, _, readerr := reader.ReadLine()
+		if readerr != nil {
+			fmt.Printf("read error (HTTP response for %s): %s\n", url, readerr.Error())
+			return
+		}
+		titleRegexp := regexp.MustCompile("<title>(.*)</title>")
+		matches := titleRegexp.FindSubmatch(line)
+		if len(matches) > 1 {
+			to_irc <- fmt.Sprintf("[Link info] %s", string(matches[1]))
+			return
+		}
+
+		if readerr != nil {
+			log.Printf("Error reading HTTP response for %s: %s\n", url, readerr.Error())
+			return
+		}
+	}
+}
+
+func handleLine(conn *irc.Conn, line *irc.Line) {
+	msg := line.Args[1]
+	if line.Args[0] != *irc_channel {
+		log.Printf(`Ignoring private message to me: "%s"`, msg)
+		return
+	}
+
+	// Extract everything that looks like an URL, fetch the title, then
+	// post it to IRC.
+	log.Printf(`Message to IRC: "%s"`, msg)
+	matches := url_re.FindAllStringSubmatch(msg, -1)
+	for _, match := range matches {
+		go getURLTitle(match[0])
+	}
+}
+
 func main() {
 	flag.Parse()
 
 	// Channel on which the HTTP handler sends lines to IRC.
-	to_irc := make(chan string)
+	to_irc = make(chan string)
 	quit := make(chan bool)
 
 	http.HandleFunc("/push_buildbot",
@@ -159,6 +243,8 @@ func main() {
 
 	c.AddHandler("disconnected",
 		func(conn *irc.Conn, line *irc.Line) { quit <- true })
+
+	c.AddHandler("PRIVMSG", handleLine)
 
 	log.Printf("Connecting...\n")
 	if err := c.Connect("irc.twice-irc.de"); err != nil {

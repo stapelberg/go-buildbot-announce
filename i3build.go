@@ -110,7 +110,7 @@ func (o *BuildbotEvent) UnmarshalJSON(data []byte) error {
 }
 
 func getURLTitle(url string) {
-	result := make(chan *http.Response)
+	result := make(chan *http.Response, 1)
 	go func() {
 		resp, err := http.Get(url)
 		if err != nil {

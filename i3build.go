@@ -5,14 +5,13 @@ package main
 
 import irc "github.com/fluffle/goirc/client"
 import (
-	"fmt"
-	"http"
-	"log"
-	"json"
-	"os"
+	"encoding/json"
 	"flag"
-	"strings"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
+	"strings"
 )
 
 var irc_channel *string = flag.String("channel", "#i3",
@@ -70,7 +69,7 @@ func (o *BuildFinishedEvent) StoreKeyValue(key, value string) {
 	}
 }
 
-func (o *BuildbotEvent) UnmarshalJSON(data []byte) os.Error {
+func (o *BuildbotEvent) UnmarshalJSON(data []byte) error {
 	var intermediate minimalBuildbotEvent
 	if err := json.Unmarshal(data, &intermediate); err != nil {
 		return err
@@ -113,7 +112,7 @@ func main() {
 		func(w http.ResponseWriter, r *http.Request) {
 			// Buildbot sends the packets URL-encoded.
 			if err := r.ParseForm(); err != nil {
-				log.Printf("Could not ParseForm: %s", err.String())
+				log.Printf("Could not ParseForm: %s", err.Error())
 			}
 
 			// Decode the JSON into BuildbotEvents and send them to IRC if
@@ -121,7 +120,7 @@ func main() {
 			var packets []BuildbotEvent
 			err := json.Unmarshal([]byte(r.Form.Get("packets")), &packets)
 			if err != nil {
-				log.Printf("Could not parse JSON: %s\n", err.String())
+				log.Printf("Could not parse JSON: %s\n", err.Error())
 			}
 			for _, event := range packets {
 				if event.Ev != nil {
@@ -134,7 +133,7 @@ func main() {
 		func(w http.ResponseWriter, r *http.Request) {
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
-				log.Printf("Could not read body: %s\n", err.String())
+				log.Printf("Could not read body: %s\n", err.Error())
 				return
 			}
 			lines := strings.Split(string(body), "\n")
@@ -146,7 +145,7 @@ func main() {
 	// Handle HTTP requests in a different Goroutine.
 	go func() {
 		if err := http.ListenAndServe("localhost:8080", nil); err != nil {
-			log.Fatal("ListenAndServer: ", err.String())
+			log.Fatal("ListenAndServer: ", err.Error())
 		}
 	}()
 
@@ -163,7 +162,7 @@ func main() {
 
 	log.Printf("Connecting...\n")
 	if err := c.Connect("irc.twice-irc.de"); err != nil {
-		log.Printf("Connection error: %s\n", err.String())
+		log.Printf("Connection error: %s\n", err.Error())
 	}
 
 	// program main loop
@@ -174,7 +173,7 @@ func main() {
 		case <-quit:
 			log.Println("Disconnected. Reconnecting...")
 			if err := c.Connect("irc.twice-irc.de"); err != nil {
-				log.Printf("Connection error: %s\n", err.String())
+				log.Printf("Connection error: %s\n", err.Error())
 			}
 		}
 	}

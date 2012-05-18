@@ -1,6 +1,8 @@
 // vim:ts=4:sw=4
 // i3 - IRC bot to announce buildbot status and commits
-// © 2011 Michael Stapelberg (see also: LICENSE)
+// also fetches the HTML <title> of URLs and posts links to i3 documentation
+// upon keywords like >userguide
+// © 2011-2012 Michael Stapelberg (see also: LICENSE)
 package main
 
 import irc "github.com/fluffle/goirc/client"
@@ -24,6 +26,15 @@ var irc_channel *string = flag.String("channel", "#i3",
 
 // This is naive, but hopefully good enough :)
 var url_re *regexp.Regexp = regexp.MustCompile("(http://(?:[^ ]*))")
+
+// Another simple HTML parsing regular expression, but since we control the
+// output (served by cgit), that’s not a big problem :).
+var doclink_re *regexp.Regexp = regexp.MustCompile(`href='[^']*'>([^<]*)\.html`)
+var docref_re *regexp.Regexp = regexp.MustCompile(`\s*>([a-zA-Z0-9-]*)\b`)
+
+// List of documentation filenames, without the trailing .html, so for example
+// "userguide", "multi-monitor", etc.
+var docfiles []string
 
 // Helper type: We first unmarshal the JSON into this type to get access to the
 // "event" string, then we decide which concrete type to unmarshal to.
@@ -177,6 +188,19 @@ func handleLine(conn *irc.Conn, line *irc.Line) {
 		return
 	}
 
+	// We have a few trigger words which aim to make support easier:
+	docmatches := docref_re.FindAllStringSubmatch(msg, -1)
+	for _, match := range docmatches {
+		docref := strings.ToLower(match[1])
+		log.Printf("Checking whether *%s* is a valid docref…", docref)
+		for _, valid_doc := range docfiles {
+			if valid_doc == match[1] {
+				to_irc <- fmt.Sprintf("[Documentation reference] http://i3wm.org/docs/%s.html", match[1])
+				break
+			}
+		}
+	}
+
 	// Extract everything that looks like an URL, fetch the title, then
 	// post it to IRC.
 	log.Printf(`Message to IRC: "%s"`, msg)
@@ -186,8 +210,37 @@ func handleLine(conn *irc.Conn, line *irc.Line) {
 	}
 }
 
+// Gets the directory index of
+// http://code.stapelberg.de/git/i3-website/tree/docs and stores all .html
+// files in a list so that we can recognize them in IRC messages.
+func getDocFilenames() {
+	log.Println("Retrieving documentation index…")
+	resp, err := http.Get("http://code.stapelberg.de/git/i3-website/tree/docs")
+	if err != nil {
+		log.Printf("Could not get documentation index: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Could not read documentation index response: %v", err)
+		return
+	}
+
+	docfiles = []string{}
+	matches := doclink_re.FindAllStringSubmatch(string(body), -1)
+	for _, match := range matches {
+		docfiles = append(docfiles, match[1])
+	}
+
+	log.Printf("docfiles = %s", docfiles)
+}
+
 func main() {
 	flag.Parse()
+
+	go getDocFilenames()
 
 	// Channel on which the HTTP handler sends lines to IRC.
 	to_irc = make(chan string)
@@ -252,11 +305,21 @@ func main() {
 		log.Printf("Connection error: %s\n", err.Error())
 	}
 
+	everyDay := make(chan bool)
+	go func() {
+		for {
+			time.Sleep(24 * time.Hour)
+			everyDay <- true
+		}
+	}()
+
 	// program main loop
 	for {
 		select {
 		case line, _ := <-to_irc:
 			c.Privmsg(*irc_channel, line)
+		case <-everyDay:
+			go getDocFilenames()
 		case <-quit:
 			log.Println("Disconnected. Reconnecting...")
 			if err := c.Connect("irc.twice-irc.de"); err != nil {

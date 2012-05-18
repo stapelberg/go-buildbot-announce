@@ -5,15 +5,15 @@ package main
 
 import irc "github.com/fluffle/goirc/client"
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 	"regexp"
-	"bufio"
+	"strings"
 	"time"
 )
 
@@ -148,7 +148,7 @@ func getURLTitle(url string) {
 		return
 	}
 
-	reader := bufio.NewReaderSize(resp.Body, 1 * 1024 * 1024)
+	reader := bufio.NewReaderSize(resp.Body, 1*1024*1024)
 	for {
 		line, _, readerr := reader.ReadLine()
 		if readerr != nil {

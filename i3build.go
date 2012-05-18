@@ -129,6 +129,7 @@ func getURLTitle(url string) {
 	if resp == nil {
 		return
 	}
+	defer resp.Body.Close()
 
 	fmt.Printf(`URL "%s", status %d\n`, url, resp.StatusCode)
 

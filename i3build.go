@@ -200,14 +200,6 @@ func handleLine(conn *irc.Conn, line *irc.Line) {
 			}
 		}
 	}
-
-	// Extract everything that looks like an URL, fetch the title, then
-	// post it to IRC.
-	log.Printf(`Message to IRC: "%s"`, msg)
-	matches := url_re.FindAllStringSubmatch(msg, -1)
-	for _, match := range matches {
-		go getURLTitle(match[0])
-	}
 }
 
 // Gets the directory index of

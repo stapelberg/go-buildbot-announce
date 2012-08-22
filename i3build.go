@@ -30,7 +30,7 @@ var url_re *regexp.Regexp = regexp.MustCompile("(http://(?:[^ ]*))")
 // Another simple HTML parsing regular expression, but since we control the
 // output (served by cgit), that’s not a big problem :).
 var doclink_re *regexp.Regexp = regexp.MustCompile(`href='[^']*'>([^<]*)\.html`)
-var docref_re *regexp.Regexp = regexp.MustCompile(`\s*>([a-zA-Z0-9-]*)\b`)
+var docref_re *regexp.Regexp = regexp.MustCompile(`\s*>([a-zA-Z0-9-]*)(#[a-zA-Z0-9_-]+)?\b`)
 
 // List of documentation filenames, without the trailing .html, so for example
 // "userguide", "multi-monitor", etc.
@@ -195,7 +195,11 @@ func handleLine(conn *irc.Conn, line *irc.Line) {
 		log.Printf("Checking whether *%s* is a valid docref…", docref)
 		for _, valid_doc := range docfiles {
 			if valid_doc == match[1] {
-				to_irc <- fmt.Sprintf("[Documentation reference] http://i3wm.org/docs/%s.html", match[1])
+				if len(match) > 2 {
+					to_irc <- fmt.Sprintf("[Documentation reference] http://i3wm.org/docs/%s.html%s", match[1], match[2])
+				} else {
+					to_irc <- fmt.Sprintf("[Documentation reference] http://i3wm.org/docs/%s.html", match[1])
+				}
 				break
 			}
 		}

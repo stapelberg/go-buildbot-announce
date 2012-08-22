@@ -1,0 +1,10 @@
+[Unit]
+Description=i3 IRC bot to announce buildbot status
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/go-buildbot-announce
+User=build
+
+[Install]
+WantedBy=multi-user.target

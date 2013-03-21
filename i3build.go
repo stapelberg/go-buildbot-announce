@@ -2,7 +2,7 @@
 // i3 - IRC bot to announce buildbot status and commits
 // also fetches the HTML <title> of URLs and posts links to i3 documentation
 // upon keywords like >userguide
-// © 2011-2012 Michael Stapelberg (see also: LICENSE)
+// © 2011-2013 Michael Stapelberg (see also: LICENSE)
 package main
 
 import irc "github.com/fluffle/goirc/client"
@@ -23,6 +23,10 @@ var to_irc chan string
 
 var irc_channel *string = flag.String("channel", "#i3",
 	"In which channel this bot should be in")
+var irc_nick *string = flag.String("nickname", "i3",
+	"Which nickname the bot should use")
+var listen *string = flag.String("listen", "localhost:8080",
+	"Which address the bot should listen on for requests")
 
 // This is naive, but hopefully good enough :)
 var url_re *regexp.Regexp = regexp.MustCompile("(http://(?:[^ ]*))")
@@ -278,12 +282,12 @@ func main() {
 
 	// Handle HTTP requests in a different Goroutine.
 	go func() {
-		if err := http.ListenAndServe("localhost:8080", nil); err != nil {
+		if err := http.ListenAndServe(*listen, nil); err != nil {
 			log.Fatal("ListenAndServer: ", err.Error())
 		}
 	}()
 
-	c := irc.SimpleClient("i3", "i3", "http://build.i3wm.org/")
+	c := irc.SimpleClient(*irc_nick, "i3", "http://build.i3wm.org/")
 
 	c.AddHandler("connected",
 		func(conn *irc.Conn, line *irc.Line) {

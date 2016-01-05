@@ -301,7 +301,7 @@ func main() {
 	c.AddHandler("PRIVMSG", handleLine)
 
 	log.Printf("Connecting...\n")
-	if err := c.Connect("irc.twice-irc.de"); err != nil {
+	if err := c.Connect("chat.freenode.net"); err != nil {
 		log.Printf("Connection error: %s\n", err.Error())
 	}
 
@@ -322,7 +322,7 @@ func main() {
 			go getDocFilenames()
 		case <-quit:
 			log.Println("Disconnected. Reconnecting...")
-			if err := c.Connect("irc.twice-irc.de"); err != nil {
+			if err := c.Connect("chat.freenode.net"); err != nil {
 				log.Printf("Connection error: %s\n", err.Error())
 			}
 		}

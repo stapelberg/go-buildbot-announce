@@ -25,6 +25,8 @@ var irc_channel *string = flag.String("channel", "#i3",
 	"In which channel this bot should be in")
 var irc_nick *string = flag.String("nickname", "i3",
 	"Which nickname the bot should use")
+var irc_password *string = flag.String("password", "",
+	"Password to use when connecting")
 var listen *string = flag.String("listen", "localhost:8080",
 	"Which address the bot should listen on for requests")
 
@@ -289,19 +291,19 @@ func main() {
 
 	c := irc.SimpleClient(*irc_nick, "i3", "http://build.i3wm.org/")
 
-	c.AddHandler("connected",
+	c.HandleFunc("connected",
 		func(conn *irc.Conn, line *irc.Line) {
 			log.Printf("Connected, joining channel %s\n", *irc_channel)
 			conn.Join(*irc_channel)
 		})
 
-	c.AddHandler("disconnected",
+	c.HandleFunc("disconnected",
 		func(conn *irc.Conn, line *irc.Line) { quit <- true })
 
-	c.AddHandler("PRIVMSG", handleLine)
+	c.HandleFunc("PRIVMSG", handleLine)
 
 	log.Printf("Connecting...\n")
-	if err := c.Connect("chat.freenode.net"); err != nil {
+	if err := c.ConnectTo("chat.freenode.net", *irc_password); err != nil {
 		log.Printf("Connection error: %s\n", err.Error())
 	}
 
@@ -322,7 +324,7 @@ func main() {
 			go getDocFilenames()
 		case <-quit:
 			log.Println("Disconnected. Reconnecting...")
-			if err := c.Connect("chat.freenode.net"); err != nil {
+			if err := c.ConnectTo("chat.freenode.net", *irc_password); err != nil {
 				log.Printf("Connection error: %s\n", err.Error())
 			}
 		}
